@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -21,53 +22,25 @@ public class SrtParser
     {
         //IO respectively
         List<SubtitleLine> subtitleLines = new ArrayList<>();
-        List<String> lines = Files.readAllLines(Paths.get(srtFile));
+        byte[] encoded = Files.readAllBytes(Paths.get(srtFile));
+        String content = new String(encoded, StandardCharsets.UTF_8);
 
         //regex
-        String regTimeMark = "\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d";
+        String nl = "\\r?\\n";
+        String sp = "[ \\t]*";
+        String regTimeMark = "(?s)(\\d+)" + sp + nl + "(\\d{1,2}:\\d\\d:\\d\\d,\\d\\d\\d)" + sp + "-->"+ sp + "(\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d)" + sp + "(?:\\d.*?)??" + nl + "(.*?)" + nl + nl;
         Pattern pTimeMark = Pattern.compile(regTimeMark);
-        Matcher mTimeMark;
-
-        //aux
-        String text;
-        String startTime;
-        String endTime;
 
         //Parsing srt
-        int size = lines.size();
-        for (int i = 0; i < size; i++)
+        Matcher mTimeMark = pTimeMark.matcher(content);
+        while (mTimeMark.find())
         {
-            //Skipping line index
-            if (hasLineIdx && ++i > size) break;
-
-
-            /*Parsing time marks*/
-            mTimeMark = pTimeMark.matcher(lines.get(i));
-
-            //Start time
-            if (mTimeMark.find())
-                startTime = mTimeMark.group(0);
-            else
-                throw new InvalidPropertiesFormatException("Expected format for time marks: dd:dd:dd,ddd");
-
-            //End time
-            if (mTimeMark.find())
-                endTime = mTimeMark.group(0);
-            else
-                throw new InvalidPropertiesFormatException("Expected format for time marks: dd:dd:dd,ddd");
-
-
-            /*Subtitle text*/
-            if (++i > size) break;
-            text = lines.get(i);
-
-
-            /*Adding subtitle line*/
-            subtitleLines.add(new SubtitleLine(subtitleLines.size()+1, text, startTime, endTime));
-
-
-            /*Skipping blank line*/
-            if (++i > size) break;
+            subtitleLines.add(new SubtitleLine(
+                    Integer.parseInt(mTimeMark.group(1)),
+                    mTimeMark.group(2),
+                    mTimeMark.group(3),
+                    mTimeMark.group(4)
+            ));
         }
 
         return subtitleLines;
