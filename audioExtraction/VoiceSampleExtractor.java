@@ -1,17 +1,17 @@
 package audioExtraction;
 
-import audioExtraction.subtitle.SrtParser;
 import audioExtraction.subtitle.SubtitleLine;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by caiomoraes on 08/10/17.
@@ -32,33 +32,14 @@ public class VoiceSampleExtractor
      */
     public void generateDataBase(String videoFile, String srtFile)
     {
-        SrtParser srtParser = new SrtParser();
-        Map<Integer, SubtitleLine> subtitleLines = new HashMap<Integer, SubtitleLine>();
-        Map<Integer, SubtitleLine> noVoiceTimeMarks = new HashMap<Integer, SubtitleLine>();
-
-
         /*Extracting audio*/
         String audioFileName = extractAudio(videoFile);
-
-
-        /*Parsing Srt file*/
-        try
-        {
-            srtParser.parseSrtFile(srtFile);
-            subtitleLines = srtParser.getSubtitleLines();
-            noVoiceTimeMarks = srtParser.getNoVoiceTimeMarks();
-        }
-        catch (IOException e)
-        {
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        }
 
 
         /*Extracting voice samples*/
         try
         {
-            extractSamples(audioFileName, subtitleLines, noVoiceTimeMarks);
+            extractSamples(audioFileName, srtFile);
         }
         catch (IOException e)
         {
@@ -97,11 +78,10 @@ public class VoiceSampleExtractor
     /**
      * Generate samples, with voice, in folder filename/Voice and, without voice, in folder filename/NoVoice.
      * @param audioFile
-     * @param subtitleLines
-     * @param noVoiceTimeMarks
+     * @param srtFile
      * @throws IOException
      */
-    private void extractSamples(String audioFile, Map<Integer, SubtitleLine> subtitleLines, Map<Integer, SubtitleLine> noVoiceTimeMarks) throws IOException
+    private void extractSamples(String audioFile, String srtFile) throws IOException
     {
         String fileName = StringUtils.getFileNameWithoutExtension(audioFile);
         String voiceDir = fileName + "/Voice";
@@ -115,18 +95,58 @@ public class VoiceSampleExtractor
         //Thread pool with size equal to the number of processors
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-        //Samples with voice
-        for (SubtitleLine subtitleLine : subtitleLines.values())
-        {
-            Runnable worker = new ExtractorThread(fileName, subtitleLine, true);
-            executor.execute(worker);
-        }
 
-        //Samples without voice
-        for (SubtitleLine noVoiceTimeMark : noVoiceTimeMarks.values())
+        /*PARSING SRT FILE*/
+        //Reading content
+        byte[] encoded = Files.readAllBytes(Paths.get(srtFile));
+        String content = new String(encoded, StandardCharsets.UTF_8);
+
+        //regex
+        String endLine = "\\r?\\n";
+        String blankSpace = "[ \\t]*";
+        String regexTimeMark = "(?s)(\\d+)" + blankSpace + endLine +
+                "(\\d{1,2}:\\d\\d:\\d\\d,\\d\\d\\d)" + blankSpace + "-->" + blankSpace +
+                "(\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d)" + blankSpace + "(?:\\d.*?)??" + endLine
+                + "(.*?)" + endLine + endLine;
+        Pattern pTimeMark = Pattern.compile(regexTimeMark);
+
+        //Parsing subtitleLines (periods most likely with voice)
+        Matcher mTimeMark = pTimeMark.matcher(content);
+
+        //Initiating fetching
+        mTimeMark.find();
+        SubtitleLine penultimateSubtitleLine = new SubtitleLine(
+                Integer.parseInt(mTimeMark.group(1)),
+                mTimeMark.group(2),
+                mTimeMark.group(3),
+                mTimeMark.group(4));
+
+        //First interval with voice
+        executor.execute(new ExtractorThread(fileName, penultimateSubtitleLine, true));
+        SubtitleLine lastSubtitleLine, noVoiceTimeMark;
+
+        //No voice time marks
+        while (mTimeMark.find())
         {
-            Runnable worker = new ExtractorThread(fileName, noVoiceTimeMark, false);
-            executor.execute(worker);
+            lastSubtitleLine = new SubtitleLine(
+                    Integer.parseInt(mTimeMark.group(1)),
+                    mTimeMark.group(2),
+                    mTimeMark.group(3),
+                    mTimeMark.group(4)
+            );
+            executor.execute(new ExtractorThread(fileName, lastSubtitleLine, true));
+
+            //interval without voice
+            noVoiceTimeMark = new SubtitleLine(
+                    penultimateSubtitleLine.idx,
+                    penultimateSubtitleLine.endTime,
+                    lastSubtitleLine.startTime,
+                    "");
+            executor.execute(new ExtractorThread(fileName, noVoiceTimeMark, false));
+
+
+            //SWAP
+            penultimateSubtitleLine = lastSubtitleLine;
         }
 
         executor.shutdown();
@@ -146,7 +166,7 @@ public class VoiceSampleExtractor
      * @param directoryPath String
      * @throws IOException
      */
-    public void cleanFiles(String directoryPath) throws IOException
+    private void cleanFiles(String directoryPath) throws IOException
     {
         int mp3HeaderSizeBytes = 1005;
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(directoryPath)))

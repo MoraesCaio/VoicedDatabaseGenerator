@@ -20,7 +20,7 @@ public class ExtractorThread implements Runnable
     ExtractorThread(String fileName, SubtitleLine subtitleLine, Boolean withVoice) throws InvalidPropertiesFormatException
     {
         this.fileName = fileName;
-        this.idx = subtitleLine.getIdx();
+        this.idx = subtitleLine.idx;
         this.startTime = subtitleLine.startTime;
         this.duration = TimeMark.getDuration(startTime, subtitleLine.endTime);
         this.withVoice = withVoice;
