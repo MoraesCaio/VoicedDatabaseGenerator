@@ -107,19 +107,19 @@ public class VoiceSampleExtractor
         String regexTimeMark = "(?s)(\\d+)" + blankSpace + endLine +
                 "(\\d{1,2}:\\d\\d:\\d\\d,\\d\\d\\d)" + blankSpace + "-->" + blankSpace +
                 "(\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d)" + blankSpace + "(?:\\d.*?)??" + endLine
-                + "(.*?)" + endLine + endLine;
+                + "(?:.*?)" + endLine + endLine;
         Pattern pTimeMark = Pattern.compile(regexTimeMark);
 
         //Parsing subtitleLines (periods most likely with voice)
         Matcher mTimeMark = pTimeMark.matcher(content);
 
-        //Initiating fetching
+        //Initializing fetching
         mTimeMark.find();
         SubtitleLine penultimateSubtitleLine = new SubtitleLine(
                 Integer.parseInt(mTimeMark.group(1)),
                 mTimeMark.group(2),
-                mTimeMark.group(3),
-                mTimeMark.group(4));
+                mTimeMark.group(3)
+        );
 
         //First interval with voice
         executor.execute(new ExtractorThread(fileName, penultimateSubtitleLine, true));
@@ -131,8 +131,7 @@ public class VoiceSampleExtractor
             lastSubtitleLine = new SubtitleLine(
                     Integer.parseInt(mTimeMark.group(1)),
                     mTimeMark.group(2),
-                    mTimeMark.group(3),
-                    mTimeMark.group(4)
+                    mTimeMark.group(3)
             );
             executor.execute(new ExtractorThread(fileName, lastSubtitleLine, true));
 
@@ -140,8 +139,8 @@ public class VoiceSampleExtractor
             noVoiceTimeMark = new SubtitleLine(
                     penultimateSubtitleLine.idx,
                     penultimateSubtitleLine.endTime,
-                    lastSubtitleLine.startTime,
-                    "");
+                    lastSubtitleLine.startTime
+                    );
             executor.execute(new ExtractorThread(fileName, noVoiceTimeMark, false));
 
 

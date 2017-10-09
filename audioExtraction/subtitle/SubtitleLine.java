@@ -10,36 +10,23 @@ public class SubtitleLine
     public int idx;
     public TimeMark startTime;
     public TimeMark endTime;
-    public String text;
 
     /*Constructors*/
     public SubtitleLine() throws InvalidPropertiesFormatException
     {
-        this(0, "", "", "");
+        this(0, "", "");
     }
 
-    public SubtitleLine(int idx, String startTime, String endTime, String text) throws InvalidPropertiesFormatException
+    public SubtitleLine(int idx, String startTime, String endTime) throws InvalidPropertiesFormatException
     {
-        this(idx, new TimeMark(startTime), new TimeMark(endTime), text);
+        this(idx, new TimeMark(startTime), new TimeMark(endTime));
     }
 
-    public SubtitleLine(int idx, TimeMark startTime, TimeMark endTime, String text)
+    public SubtitleLine(int idx, TimeMark startTime, TimeMark endTime)
     {
         this.idx = idx;
         this.startTime = startTime;
         this.endTime = endTime;
-        this.text = text;
-    }
-
-    /*Getters*/
-    public int getIdx()
-    {
-        return idx;
-    }
-
-    public String getStartTime()
-    {
-        return startTime.toString();
     }
 
     @Override
@@ -47,7 +34,6 @@ public class SubtitleLine
     {
         return "Index: \t\t\t" + idx +
                 "\nStart time: \t" + startTime +
-                "\nEnd Time: \t\t" + endTime +
-                "\nText: \t\t\t" + text;
+                "\nEnd Time: \t\t" + endTime;
     }
 }
