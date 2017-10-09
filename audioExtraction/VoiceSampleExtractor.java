@@ -121,7 +121,6 @@ public class VoiceSampleExtractor
             Runnable worker = new ExtractorThread(fileName, subtitleLine, true);
             executor.execute(worker);
         }
-        cleanFiles(fileName + "/Voice");
 
         //Samples without voice
         for (SubtitleLine noVoiceTimeMark : noVoiceTimeMarks.values())
@@ -129,15 +128,16 @@ public class VoiceSampleExtractor
             Runnable worker = new ExtractorThread(fileName, noVoiceTimeMark, false);
             executor.execute(worker);
         }
-        cleanFiles(fileName + "/NoVoice");
 
         executor.shutdown();
 
         //waiting all threads to finish}
         while (!executor.isTerminated());
-
         System.out.println("Finished all threads.");
 
+        //Cleaning invalid files
+        cleanFiles(voiceDir);
+        cleanFiles(noVoiceDir);
     }
 
 
@@ -146,7 +146,7 @@ public class VoiceSampleExtractor
      * @param directoryPath String
      * @throws IOException
      */
-    private void cleanFiles(String directoryPath) throws IOException
+    public void cleanFiles(String directoryPath) throws IOException
     {
         int mp3HeaderSizeBytes = 1005;
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(directoryPath)))
