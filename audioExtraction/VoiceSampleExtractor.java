@@ -2,11 +2,14 @@ package audioExtraction;
 
 import audioExtraction.subtitle.SrtParser;
 import audioExtraction.subtitle.SubtitleLine;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -15,11 +18,23 @@ import java.util.concurrent.Executors;
  */
 public class VoiceSampleExtractor
 {
+    /**
+     * Generate an audio data base from a video file, taking time marks from its srt file as parameter (to determine
+     *  which sample has voice or not), with the following structure:
+     *      filename/
+     *          filename.mp3 //whole audio of the video
+     *          Voice/
+     *              voiceSamples.mp3 //samples with voice
+     *          NoVoice/
+     *              noVoiceSamples.mp3 //samples without voice
+     * @param videoFile
+     * @param srtFile
+     */
     public void generateDataBase(String videoFile, String srtFile)
     {
         SrtParser srtParser = new SrtParser();
-        List<SubtitleLine> subtitleLines = new ArrayList<>();
-        List<SubtitleLine> noVoiceTimeMarks = new ArrayList<>();
+        Map<Integer, SubtitleLine> subtitleLines = new HashMap<Integer, SubtitleLine>();
+        Map<Integer, SubtitleLine> noVoiceTimeMarks = new HashMap<Integer, SubtitleLine>();
 
 
         /*Extracting audio*/
@@ -51,6 +66,12 @@ public class VoiceSampleExtractor
         }
     }
 
+
+    /**
+     * Extract the whole audio of the video file and saves it as an mp3 file in folder filename/.
+     * @param videoFile String
+     * @return
+     */
     public String extractAudio(String videoFile)
     {
         String audioFile = "";
@@ -73,31 +94,42 @@ public class VoiceSampleExtractor
         return audioFile;
     }
 
-    private void extractSamples(String audioFile, List<SubtitleLine> subtitleLines, List<SubtitleLine> noVoiceTimeMarks) throws IOException
+    /**
+     * Generate samples, with voice, in folder filename/Voice and, without voice, in folder filename/NoVoice.
+     * @param audioFile
+     * @param subtitleLines
+     * @param noVoiceTimeMarks
+     * @throws IOException
+     */
+    private void extractSamples(String audioFile, Map<Integer, SubtitleLine> subtitleLines, Map<Integer, SubtitleLine> noVoiceTimeMarks) throws IOException
     {
         String fileName = StringUtils.getFileNameWithoutExtension(audioFile);
+        String voiceDir = fileName + "/Voice";
+        String noVoiceDir = fileName + "/NoVoice";
 
         //Folders
         Files.createDirectories(Paths.get(fileName));
-        Files.createDirectories(Paths.get(fileName+"/Voice"));
-        Files.createDirectories(Paths.get(fileName+"/NoVoice"));
+        Files.createDirectories(Paths.get(voiceDir));
+        Files.createDirectories(Paths.get(noVoiceDir));
 
         //Thread pool with size equal to the number of processors
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
         //Samples with voice
-        for (SubtitleLine subtitleLine : subtitleLines)
+        for (SubtitleLine subtitleLine : subtitleLines.values())
         {
             Runnable worker = new ExtractorThread(fileName, subtitleLine, true);
             executor.execute(worker);
         }
+        cleanFiles(fileName + "/Voice");
 
         //Samples without voice
-        for (SubtitleLine noVoiceTimeMark : noVoiceTimeMarks)
+        for (SubtitleLine noVoiceTimeMark : noVoiceTimeMarks.values())
         {
             Runnable worker = new ExtractorThread(fileName, noVoiceTimeMark, false);
             executor.execute(worker);
         }
+        cleanFiles(fileName + "/NoVoice");
 
         executor.shutdown();
 
@@ -108,4 +140,28 @@ public class VoiceSampleExtractor
 
     }
 
+
+    /**
+     * Deletes files in specified folder with size equal to or less than mp3 header size in bytes.
+     * @param directoryPath String
+     * @throws IOException
+     */
+    private void cleanFiles(String directoryPath) throws IOException
+    {
+        int mp3HeaderSizeBytes = 1005;
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(directoryPath)))
+        {
+            for (Path entry : stream)
+            {
+                File file = entry.toFile();
+                if (file.isFile())
+                {
+                    if (file.length() <= mp3HeaderSizeBytes)
+                    {
+                        file.delete();
+                    }
+                }
+            }
+        }
+    }
 }
