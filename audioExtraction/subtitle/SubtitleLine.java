@@ -1,22 +1,29 @@
 package audioExtraction.subtitle;
 
+import java.util.InvalidPropertiesFormatException;
+
 /**
  * Created by caiomoraes on 07/10/17.
  */
 public class SubtitleLine
 {
     public int idx;
-    public String startTime;
-    public String endTime;
+    public TimeMark startTime;
+    public TimeMark endTime;
     public String text;
 
     /*Constructors*/
-    public SubtitleLine()
+    public SubtitleLine() throws InvalidPropertiesFormatException
     {
         this(0, "", "", "");
     }
 
-    public SubtitleLine(int idx, String startTime, String endTime, String text)
+    public SubtitleLine(int idx, String startTime, String endTime, String text) throws InvalidPropertiesFormatException
+    {
+        this(idx, new TimeMark(startTime), new TimeMark(endTime), text);
+    }
+
+    public SubtitleLine(int idx, TimeMark startTime, TimeMark endTime, String text)
     {
         this.idx = idx;
         this.startTime = startTime;
@@ -32,7 +39,7 @@ public class SubtitleLine
 
     public String getStartTime()
     {
-        return startTime;
+        return startTime.toString();
     }
 
     @Override

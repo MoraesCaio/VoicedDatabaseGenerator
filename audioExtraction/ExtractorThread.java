@@ -12,8 +12,8 @@ public class ExtractorThread implements Runnable
 {
     private String fileName;
     private int idx;
-    private String startTime;
-    private String duration;
+    private TimeMark startTime;
+    private TimeMark duration;
     private boolean withVoice;
 
     /*Constructor*/
@@ -22,7 +22,7 @@ public class ExtractorThread implements Runnable
         this.fileName = fileName;
         this.idx = subtitleLine.getIdx();
         this.startTime = subtitleLine.startTime;
-        this.duration = TimeMark.getDuration(startTime, subtitleLine.endTime).toString();
+        this.duration = TimeMark.getDuration(startTime, subtitleLine.endTime);
         this.withVoice = withVoice;
     }
 
@@ -33,7 +33,7 @@ public class ExtractorThread implements Runnable
         try
         {
             StringBuilder stringBuilder = new StringBuilder(
-                    "ffmpeg -y -ss " + new TimeMark(startTime) +
+                    "ffmpeg -y -ss " + startTime +
                             " -t " + duration +
                             " -i " + fileName + "/" + fileName + ".mp3 " +
                             fileName + "/" + ((withVoice)?"":"No") + "Voice/" +
