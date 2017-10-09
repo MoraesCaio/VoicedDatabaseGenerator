@@ -1,7 +1,6 @@
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.InvalidPropertiesFormatException;
-import java.util.List;
+import audioExtraction.VoiceSampleExtractor;
+
+import java.util.Scanner;
 
 /**
  * Created by caiomoraes on 07/10/17.
@@ -10,37 +9,23 @@ public class AudioDBGen
 {
     public static void main(String[] args)
     {
-        SrtParser srtParser = new SrtParser();
-        List<SubtitleLine> subtitleLines = new ArrayList<>();
-
-        TimeMark tm1, tm2;
-        try
+        VoiceSampleExtractor voiceSampleExtractor = new VoiceSampleExtractor();
+        String videoFile;
+        String srtFile;
+        if (args.length < 2)
         {
-            tm1 = new TimeMark("00:01:20,700");
-            tm2 = new TimeMark("00:01:21,900");
-            System.out.println(TimeMark.getDuration(tm1, tm2));
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Not enough parameters.");
+            System.out.println("Enter video file name:");
+            videoFile = scanner.nextLine();
+            System.out.println("Enter srt file name:");
+            srtFile = scanner.nextLine();
         }
-        catch (InvalidPropertiesFormatException e)
+        else
         {
-            e.printStackTrace();
+            videoFile = args[0];
+            srtFile = args[1];
         }
-
-        /*Parsing*/
-        /*try
-        {
-            subtitleLines = srtParser.parseSrtFile("TresMinutos.srt", true);
-        }
-        catch (IOException e)
-        {
-            System.out.println(e.getMessage());
-            e.printStackTrace();
-        }
-
-
-        *//*Printing results*//*
-        for (SubtitleLine subtitleLine : subtitleLines)
-        {
-            System.out.println(subtitleLine);
-        }*/
+        voiceSampleExtractor.generateDataBase(videoFile, srtFile);
     }
 }

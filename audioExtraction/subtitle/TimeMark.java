@@ -1,3 +1,5 @@
+package audioExtraction.subtitle;
+
 import java.util.InvalidPropertiesFormatException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -7,16 +9,14 @@ import java.util.regex.Pattern;
  */
 public class TimeMark
 {
-    private String timestamp;
     private int hours;
     private int minutes;
     private int seconds;
     private int milliseconds;
-    final static String regTimeMark = "(\\d\\d):(\\d\\d):(\\d\\d),(\\d\\d\\d)";
-    final static int hourInMilliseconds = 60 * 60 * 1000;
-    final static int minuteInMilliseconds = 60 * 1000;
-    final static int secondInMilliseconds = 1000;
+    private final static String regTimeMark = "(\\d\\d):(\\d\\d):(\\d\\d),(\\d\\d\\d)";
 
+
+    /*Constructors*/
     public TimeMark() throws InvalidPropertiesFormatException
     {
         this("00:00:00,000");
@@ -24,10 +24,11 @@ public class TimeMark
 
     public TimeMark(String timestamp) throws InvalidPropertiesFormatException
     {
-        this.timestamp = timestamp;
-
+        //Regex
         Pattern patternTimeMark = Pattern.compile(regTimeMark);
         Matcher matcherTimeMark = patternTimeMark.matcher(timestamp);
+
+        //Timestamp is not on format dd.dd.dd,ddd
         if (!matcherTimeMark.find())
             throw new InvalidPropertiesFormatException("Expected format for time marks: dd:dd:dd,ddd");
 
@@ -45,6 +46,8 @@ public class TimeMark
         this.milliseconds = milliseconds;
     }
 
+
+    /*Methods*/
     public void addHours(int hours)
     {
         this.hours += hours;
@@ -99,6 +102,27 @@ public class TimeMark
         }
     }
 
+
+    /**
+     * Calculate duration between two time marks. If start comes after the end, they are reversed before calculation.
+     * @param start timestamp String
+     * @param end timestamp String
+     * @return TimeMark with total milliseconds equal to start and end difference.
+     * @throws InvalidPropertiesFormatException
+     */
+    public static TimeMark getDuration(String start, String end) throws InvalidPropertiesFormatException
+    {
+        return getDuration(new TimeMark(start), new TimeMark(end));
+    }
+
+
+    /**
+     * Calculate duration between two time marks. If start comes after the end, they are reversed before calculation.
+     * @param start TimeMark object
+     * @param end TimeMark object
+     * @return TimeMark with total milliseconds equal to start and end difference.
+     * @throws InvalidPropertiesFormatException
+     */
     public static TimeMark getDuration(TimeMark start, TimeMark end)
     {
         long startTotal = start.getTotalMilliseconds();
@@ -122,11 +146,6 @@ public class TimeMark
         int hours = (int) duration;
 
         return new TimeMark(hours, minutes, seconds, milliseconds);
-
-        /*int hours        = (int) duration / hourInMilliseconds;
-        int minutes      = (int) (duration - (hours*hourInMilliseconds))     / minuteInMilliseconds;
-        int seconds      = (int) (duration - (minutes*minuteInMilliseconds)) / secondInMilliseconds;
-        int milliseconds = (int) (duration / (60 * 60 * 1000);*/
     }
 
     public long getTotalMilliseconds()
@@ -139,7 +158,7 @@ public class TimeMark
     {
         return ((hours < 10)?"0":"")+hours+ ":"+
                 ((minutes < 10)?"0":"")+minutes+":"+
-                ((seconds < 10)?"0":"")+seconds+","+
+                ((seconds < 10)?"0":"")+seconds+"."+
                 ((milliseconds < 100)?"0":"")+
                 ((milliseconds < 10)?"0":"")+
                 milliseconds;
