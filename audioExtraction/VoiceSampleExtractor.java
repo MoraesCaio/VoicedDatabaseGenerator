@@ -8,6 +8,8 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -27,21 +29,28 @@ public class VoiceSampleExtractor
      *              voiceSamples.mp3 //samples with voice
      *          NoVoice/
      *              noVoiceSamples.mp3 //samples without voice
-     * @param videoFile
-     * @param srtFile
+     * @param videoFile video file name
      */
-    public void generateDataBase(String videoFile, String srtFile)
+    public void generateDataBase(String videoFile)
     {
+        if (!new File(videoFile).exists())
+        {
+            System.out.println("Video file does not exist!");
+            return;
+        }
+
+        String srtFile = videoFile.substring(0, videoFile.length()-4) + ".srt";
+
         SrtParser srtParser = new SrtParser();
         Map<Integer, SubtitleLine> subtitleLines = new HashMap<Integer, SubtitleLine>();
         Map<Integer, SubtitleLine> noVoiceTimeMarks = new HashMap<Integer, SubtitleLine>();
 
 
-        /*Extracting audio*/
+        //Extracting audio
         String audioFileName = extractAudio(videoFile);
 
 
-        /*Parsing Srt file*/
+        //Parsing Srt file
         try
         {
             srtParser.parseSrtFile(srtFile);
@@ -55,7 +64,7 @@ public class VoiceSampleExtractor
         }
 
 
-        /*Extracting voice samples*/
+        //Extracting voice samples
         try
         {
             extractSamples(audioFileName, subtitleLines, noVoiceTimeMarks);
@@ -74,6 +83,7 @@ public class VoiceSampleExtractor
      */
     public String extractAudio(String videoFile)
     {
+
         String audioFile = "";
         try
         {
@@ -81,9 +91,11 @@ public class VoiceSampleExtractor
             audioFile = fileName + ".mp3";
 
             //folder
+            System.out.println("Creating output directory...");
             Files.createDirectories(Paths.get(fileName));
 
             //call: ffmpeg -y -i origin.mp4 origin/origin.mp3
+            System.out.println("Extracting the whole audio from " + videoFile);
             Process p = Runtime.getRuntime().exec("ffmpeg -y -i " + videoFile + " " + fileName + "/" + audioFile);
             p.waitFor();
         }
@@ -104,17 +116,18 @@ public class VoiceSampleExtractor
     private void extractSamples(String audioFile, Map<Integer, SubtitleLine> subtitleLines, Map<Integer, SubtitleLine> noVoiceTimeMarks) throws IOException
     {
         String fileName = StringUtils.getFileNameWithoutExtension(audioFile);
-        String voiceDir = fileName + "/Voice";
-        String noVoiceDir = fileName + "/NoVoice";
+        String voiceDir = fileName + "/Voice/";
+        String noVoiceDir = fileName + "/NoVoice/";
 
         //Folders
-        Files.createDirectories(Paths.get(fileName));
+        System.out.println("Creating voice and unvoiced sample directories...");
         Files.createDirectories(Paths.get(voiceDir));
         Files.createDirectories(Paths.get(noVoiceDir));
 
         //Thread pool with size equal to the number of processors
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
+        System.out.println("Extracting samples...");
         //Samples with voice
         for (SubtitleLine subtitleLine : subtitleLines.values())
         {
@@ -133,11 +146,18 @@ public class VoiceSampleExtractor
 
         //waiting all threads to finish}
         while (!executor.isTerminated());
-        System.out.println("Finished all threads.");
+        System.out.println("All extracting threads have ended.");
 
         //Cleaning invalid files
+        System.out.println("Removing invalid files...");
         cleanFiles(voiceDir);
         cleanFiles(noVoiceDir);
+
+
+        //Renaming remaining files
+        System.out.println("Renaming remaining files...");
+        renameFiles("./"+voiceDir);
+        renameFiles("./"+noVoiceDir);
     }
 
 
@@ -162,6 +182,45 @@ public class VoiceSampleExtractor
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Renames files from fileName/Voice and fileName/NoVoice to fill gaps created as result from cleaning invalid
+     *  files.
+     * @param directory String containing absolute path of directory terminated with '/'.
+     */
+    public void renameFiles(String directory)
+    {
+        if (!directory.endsWith("/")) directory = directory + "/";
+
+        //Fetching files
+        String[] files = new File(directory).list();
+
+        //Sorting files by its last 6 digits
+        Arrays.sort(files, new Comparator<String>() {
+            public int compare(String o1, String o2) {
+                return extractInt(o1) - extractInt(o2);
+            }
+
+            int extractInt(String s) {
+                String num = s.replaceAll("\\D", "");
+                while (num.length() > 6){
+                    num = num.substring(1);
+                }
+                // return 0 if no digits found
+                return num.isEmpty() ? 0 : Integer.parseInt(num);
+            }
+        });
+
+        String baseNewFileName = directory + files[0].substring(0, files[0].lastIndexOf("Voice")+"Voice".length());
+
+        //Renaming files (0-based)
+        for (int i = 0; i < files.length; i++)
+        {
+            File f1 = new File(directory+files[i]);
+            File f2 = new File(baseNewFileName+i+".mp3 ");
+            f1.renameTo(f2);
         }
     }
 }

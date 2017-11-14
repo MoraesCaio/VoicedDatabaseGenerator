@@ -1,5 +1,4 @@
 import audioExtraction.VoiceSampleExtractor;
-
 import java.util.Scanner;
 
 /**
@@ -11,21 +10,17 @@ public class AudioDBGen
     {
         VoiceSampleExtractor voiceSampleExtractor = new VoiceSampleExtractor();
         String videoFile;
-        String srtFile;
-        if (args.length < 2)
+        if (args.length < 1)
         {
             Scanner scanner = new Scanner(System.in);
             System.out.println("Not enough parameters.");
             System.out.println("Enter video file name:");
             videoFile = scanner.nextLine();
-            System.out.println("Enter srt file name:");
-            srtFile = scanner.nextLine();
         }
         else
         {
             videoFile = args[0];
-            srtFile = args[1];
         }
-        voiceSampleExtractor.generateDataBase(videoFile, srtFile);
+        voiceSampleExtractor.generateDataBase(videoFile);
     }
 }

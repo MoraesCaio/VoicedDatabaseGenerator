@@ -39,7 +39,7 @@ public class ExtractorThread implements Runnable
                             fileName + "/" + ((withVoice)?"":"No") + "Voice/" +
                             fileName + ((withVoice)?"":"No") + "Voice" + idx + ".mp3");
 
-            System.out.println("Executing command: " + stringBuilder.toString());
+            //System.out.println("Executing command: " + stringBuilder.toString());
 
             Process p = Runtime.getRuntime().exec(stringBuilder.toString());
             p.waitFor();

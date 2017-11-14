@@ -26,6 +26,7 @@ public class SrtParser
 
     public void parseSrtFile(String srtFile) throws IOException
     {
+        System.out.println("Parsing " + srtFile);
         //Resetting for new files
         this.subtitleLines = new HashMap<Integer, SubtitleLine>();
         this.noVoiceTimeMarks = new HashMap<Integer, SubtitleLine>();
@@ -79,10 +80,10 @@ public class SrtParser
         }
 
         /*Printing results*/
-        for (SubtitleLine subtitleLine : subtitleLines.values())
+        /*for (SubtitleLine subtitleLine : subtitleLines.values())
         {
             System.out.println(subtitleLine);
-        }
+        }*/
     }
 
     /*Getters*/
